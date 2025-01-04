@@ -41,7 +41,6 @@ jobs:
 
   cobertura:
     runs-on: ubuntu-latest
-
     steps:
     - name: Run tests
       run: |
