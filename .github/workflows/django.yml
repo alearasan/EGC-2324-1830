@@ -1,11 +1,9 @@
 name: Python application
 
 on: [push]
-  
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     services:
@@ -17,7 +15,6 @@ jobs:
           POSTGRES_DB: decide
         ports:
           - 5432:5432
-        # needed because the postgres container does not provide a healthcheck
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
@@ -38,17 +35,29 @@ jobs:
       run: |
         cd decide
         python manage.py migrate
+    - name: Run tests and generate coverage report
+      run: |
+        cd decide
+        coverage run --branch --source=. ./manage.py test --keepdb
+        coverage xml
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: decide/coverage.xml
 
   cobertura:
     runs-on: ubuntu-latest
+    needs: build  # Garantiza que se ejecute después del job "build"
+
     steps:
-    - name: Run tests
-      run: |
-        cd decide
-        coverage run --branch --source=. ./manage.py test  --keepdb 
-        coverage xml 
+    - uses: actions/checkout@v3  # Es necesario para clonar el repositorio
+    - name: Download coverage report
+      uses: actions/download-artifact@v3
+      with:
+        name: coverage-report
     - name: Codacy Coverage Reporter
       uses: codacy/codacy-coverage-reporter-action@v1
       with:
         project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-        coverage-reports: decide/coverage.xml 
+        coverage-reports: coverage.xml
